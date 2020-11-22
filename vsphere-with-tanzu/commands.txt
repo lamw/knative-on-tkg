@@ -1,0 +1,13 @@
+kubectl apply -f https://github.com/knative/serving/releases/download/v0.15.0/serving-crds.yaml
+kubectl apply -f https://github.com/knative/serving/releases/download/v0.15.0/serving-core.yaml
+kubectl apply -f https://raw.githubusercontent.com/lamw/knative-on-tkg/master/vsphere-with-tanzu/knative-serving-psp.yaml
+kubectl wait deployment --all --timeout=-1s --for=condition=Available -n knative-serving
+kubectl apply -f https://github.com/knative-sandbox/net-kourier/releases/download/v0.15.0/kourier.yaml
+kubectl patch configmap/config-network --namespace knative-serving --type merge --patch '{"data":{"ingress.class":"kourier.ingress.networking.knative.dev"}}'
+kubectl apply -f https://raw.githubusercontent.com/lamw/knative-on-tkg/master/vsphere-with-tanzu/kourier-system-psp.yaml
+kubectl wait deployment --all --timeout=-1s --for=condition=Available -n kourier-system
+kubectl wait deployment --all --timeout=-1s --for=condition=Available -n knative-serving
+KOURIER_EXTERNAL_IP=$(kubectl -n kourier-system get svc kourier | tail -1 | awk '{print $4}')
+kubectl patch configmap/config-domain --namespace knative-serving --type merge --patch "{\"data\":{\"${KOURIER_EXTERNAL_IP}.nip.io\":\"\"}}"
+kubectl apply -f https://raw.githubusercontent.com/lamw/knative-on-tkg/master/vsphere-with-tanzu/service.yaml
+kubectl apply -f https://raw.githubusercontent.com/lamw/knative-on-tkg/master/vsphere-with-tanzu/helloworld-go-psp.yaml
